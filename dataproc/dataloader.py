@@ -1,8 +1,7 @@
 import torch
-import MP_data
 from torch.utils.data import Dataset
-from crystalToVoxel import cellToVoxel
-
+from dataproc.crystalToVoxel import cellToVoxel
+from dataproc.MP_data import dataFromMp
 
 class CrystalVoxelDataset(Dataset):
 
@@ -12,7 +11,7 @@ class CrystalVoxelDataset(Dataset):
                  stability,
                  sigma,
                  grid_size):
-        self.dataset = MP_data.dataFromMp(pool=pool,
+        self.dataset = dataFromMp(pool=pool,
                                           property=property,
                                           stability=stability).dataset
         self.crysToVox = cellToVoxel(sigma=sigma,
@@ -25,11 +24,14 @@ class CrystalVoxelDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        stability = self.dataset[idx][3]
-        property = self.dataset[idx][2]
         name = self.dataset[idx][1]
-        structure = self.dataset[idx][3]
-        voxel = self.crysToVox.speciesToVoxel(structure)
+        property = self.dataset[idx][2]
+        stability = self.dataset[idx][3]
+        structure = self.dataset[idx][4]
+
+        voxel = self.crysToVox.speciesToVoxel(structure) #ideally should be a transform property
+
         sample = {'voxel': voxel, 'stability': stability, 'property': property, 'name': name}
+        #name won't be used in training but is useful to have
 
         return sample

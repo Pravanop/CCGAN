@@ -1,6 +1,4 @@
-from tqdm import tqdm
-import MP_data
-from MP_data import *
+import numpy as np
 
 class cellToVoxel:
 
@@ -24,7 +22,7 @@ class cellToVoxel:
 
         npos = self.basisTranslate(structure)
         voxel_all = np.zeros((self.dimension, self.dimension, self.dimension))
-        for id, atom in tqdm(enumerate(structure.species)):
+        for id, atom in enumerate(structure.species):
             voxel = np.zeros((self.dimension, self.dimension, self.dimension))
             for idx, x in enumerate(voxel):
                 for idy, y in enumerate(x):
@@ -37,6 +35,4 @@ class cellToVoxel:
         return voxel_all
 
 
-dataset = MP_data.dataFromMp(pool=['Ba', 'Ti', 'O'],
-                             property = 'band_gap',
-                             stability= 'energy_above_hull').dataset
+

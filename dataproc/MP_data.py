@@ -10,7 +10,7 @@ class dataFromMp:
                  property: str,
                  stability: str):
 
-        self.api_key = 'u1TjwfwfTnpF8IolXF9PBY9RT9YauL84'
+        self.api_key = 'u1TjwfwfTnpF8IolXF9PBY9RT9YauL84' #pravan's api key, change if needed
         self.pool = pool
 
         self.property = property
@@ -18,25 +18,24 @@ class dataFromMp:
 
         with MPRester(self.api_key) as mpr:
             self.docs = mpr.summary.search(elements=self.pool,
-                                      fields=[
-                                              self.property,
+                                      fields=[self.property,
                                               self.stability,
                                               "formula_pretty",
-                                              "material_id"])
+                                              "material_id"]) #formula and material_id needed for easy pre-processing
 
             self.structs = mpr.materials.search(elements=self.pool,
                                         fields=["initial_structures",
                                                 "material_id"])
 
         self.docs = [dict(ele) for ele in self.docs]
-        self.structs = [dict(ele) for ele in self.structs]
+        self.structs = [dict(ele) for ele in self.structs] #intial structures
 
         self.dataset = self.ordering()
 
 
     @staticmethod
     def search(arr, n, x):
-
+        #TODO using linear search, change to more efficient method later
         for i in range(0, n):
             if (arr[i]['material_id'] == x):
                 return i
@@ -51,7 +50,11 @@ class dataFromMp:
 
             if (doc['material_id'] == self.structs[idx_struct]['material_id']):
                structure = self.structs[idx_struct]['initial_structures'][0]
-               row_temp = np.array((str(doc['material_id']), str(doc['formula_pretty']), doc[self.property], doc[self.stability],structure), dtype=dtype )
+               row_temp = np.array((str(self.structs[idx_struct]['material_id']),
+                                    str(doc['formula_pretty']),
+                                    doc[self.property],
+                                    doc[self.stability],
+                                    structure), dtype=dtype )
 
             data_int.append(row_temp)
 
