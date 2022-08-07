@@ -13,7 +13,7 @@ class CrystalVoxelDataset(Dataset):
                  sigma,
                  grid_size):
         self.dataset = dataFromMp(pool=pool,
-                                  property=property,
+                                  target=property,
                                   stability=stability).dataset
         self.crysToVox = cellToVoxel(sigma=sigma,
                                      dimension=grid_size)

@@ -17,13 +17,14 @@ def plotter_voxel(sample):
         opacity=0.1,  # needs to be small to see through all surfaces
         surface_count=20,  # needs to be a large number for good volume rendering
     ))
-    fig.update_layout(title_text= sample['name'])
+    fig.update_layout(title_text=sample['name'])
     fig.show()
 
-dataset = CVD(pool=['Na', 'F', 'O'],
+
+dataset = CVD(pool='**O3',
               property='band_gap',
               stability='energy_above_hull',
               sigma=0.4,
               grid_size=20)
 
-plotter_voxel(dataset[0])
+plotter_voxel(dataset[10])
