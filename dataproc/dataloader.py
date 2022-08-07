@@ -25,7 +25,7 @@ class CrystalVoxelDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        name = self.dataset[idx][1]
+        name = f'{self.dataset[idx][1]}({self.dataset[idx][0]})'
         target = torch.tensor(self.dataset[idx][2], dtype=torch.float32)
         stability = torch.tensor(self.dataset[idx][3], dtype=torch.float32)
         structure = self.dataset[idx][4]

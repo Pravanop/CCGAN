@@ -30,7 +30,7 @@ class cellToVoxel:
                         atm_no = atom.Z
                         r = (idx - npos[id][0]) ** 2 + (idy - npos[id][1]) ** 2 + (idz - npos[id][2]) ** 2
                         den = 2 * self.sigma ** 2
-                        voxel[idx][idy][idz] = atm_no * np.exp(-r / den)
+                        voxel[idx][idy][idz] = atm_no * np.exp(-(r**0.5) / den)
             voxel_all += voxel
         return voxel_all
 
