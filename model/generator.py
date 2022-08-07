@@ -34,11 +34,10 @@ class Generator(Module):
         latent_output = self.latent(noise_vector)
         latent_output = latent_output.view(-1, 1, 4, 4, 4)
 
-        label_output = self.label_conditioned_generator(label)
+        label_output = self.label_conditioned_generator(label.view(-1, 1))
         label_output = label_output.view(-1, 1, 4, 4, 4)
 
         concat = torch.cat((latent_output, label_output), dim=2)
-        print(concat.size())
         image = self.model(concat)
 
         return image

@@ -26,11 +26,11 @@ class Discriminator(Module):
     def forward(self, inputs):
 
         img, label = inputs
-        label_output = self.label_condition_disc(label)
-        label_output = label_output.view(-1, 1, 20, 20, 20)
+        label_output = self.label_condition_disc(label.view(-1, 1))
+        label_output = label_output.view(-1, 1,  20, 20, 20)
         concat = torch.cat((img, label_output), dim=2)
         output = self.model(concat)
-        reshape = output.view(1, output.size(2))
+        reshape = output.view(img.size(0), output.size(2))
         linear = self.fc2(reshape)
 
         return self.sig(linear)
