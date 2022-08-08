@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class cellToVoxel:
 
     def __init__(self,
@@ -18,7 +19,7 @@ class cellToVoxel:
         npos = pos + basis
         return npos
 
-    def speciesToVoxel(self, structure):
+    def speciesToVoxel(self, structure, eden=False):
 
         npos = self.basisTranslate(structure)
         voxel_all = np.zeros((self.dimension, self.dimension, self.dimension))
@@ -30,9 +31,10 @@ class cellToVoxel:
                         atm_no = atom.Z
                         r = (idx - npos[id][0]) ** 2 + (idy - npos[id][1]) ** 2 + (idz - npos[id][2]) ** 2
                         den = 2 * self.sigma ** 2
-                        voxel[idx][idy][idz] = atm_no * np.exp(-(r**0.5) / den)
+                        if eden:
+                            voxel[idx][idy][idz] = 1.0 / ((2.0 * np.pi) ** 1.5) * atm_no * (1.0 / self.sigma ** 3) * np.exp(
+                                -r / den)
+                        else:
+                            voxel[idx][idy][idz] = atm_no * np.exp(-r / den)
             voxel_all += voxel
         return voxel_all
-
-
-

@@ -11,12 +11,14 @@ class CrystalVoxelDataset(Dataset):
                  property,
                  stability,
                  sigma,
-                 grid_size):
+                 grid_size,
+                 eden):
         self.dataset = dataFromMp(pool=pool,
                                   target=property,
                                   stability=stability).dataset
         self.crysToVox = cellToVoxel(sigma=sigma,
                                      dimension=grid_size)
+        self.eden = eden
 
     def __len__(self):
         return int(self.dataset.shape[0])
@@ -30,7 +32,7 @@ class CrystalVoxelDataset(Dataset):
         stability = torch.tensor(self.dataset[idx][3], dtype=torch.float32)
         structure = self.dataset[idx][4]
 
-        voxel_np = self.crysToVox.speciesToVoxel(structure)  # ideally should be a transform property
+        voxel_np = self.crysToVox.speciesToVoxel(structure, eden=self.eden)  # ideally should be a transform property
         voxel = torch.tensor(voxel_np, dtype=torch.float32)
         sample = {'voxel': voxel, 'stability': stability, 'property': target, 'name': name}
         # name won't be used in training but is useful to have

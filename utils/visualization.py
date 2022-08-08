@@ -15,7 +15,7 @@ def plotter_voxel(sample):
         isomin=0,
         isomax=np.max(voxel),
         opacity=0.1,  # needs to be small to see through all surfaces
-        surface_count=20,  # needs to be a large number for good volume rendering
+        surface_count=40,  # needs to be a large number for good volume rendering
     ))
     fig.update_layout(title_text=sample['name'])
     fig.show()
@@ -25,6 +25,7 @@ dataset = CVD(pool='**O3',
               property='band_gap',
               stability='energy_above_hull',
               sigma=0.4,
-              grid_size=20)
+              grid_size=20,
+              eden=True)
 
 plotter_voxel(dataset[10])
