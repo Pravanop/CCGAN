@@ -1,14 +1,21 @@
+from typing import Tuple
+
 import torch
 from torch.nn import Module, Linear, LeakyReLU, Conv3d, BatchNorm3d, Sequential, Sigmoid, AdaptiveAvgPool3d
 
 
 class Discriminator(Module):
     def __init__(self,
-                 label_dim: int = 1):
+                 label_dim: int = 1) -> None:
+        """
+        The discriminator Module hardcoded to take a one channel 20 dimensional voxel grid.
+
+        :param label_dim: The dimension of the property. Should mostly be 1
+        """
         super(Discriminator, self).__init__()
 
         self.label_condition_disc = Linear(label_dim, 20 * 20 * 20)
-        self.fc2 = Linear(512, 1)
+        self.fc = Linear(512, 1)
         self.sig = Sigmoid()
         self.model = Sequential(Conv3d(in_channels=1, out_channels=4, kernel_size=(2, 2, 2), stride=1, bias=False),
                                 LeakyReLU(0.2, inplace=True),
@@ -21,16 +28,22 @@ class Discriminator(Module):
                                 Conv3d(in_channels=4, out_channels=1, kernel_size=(2, 2, 2), stride=1, bias=False),
                                 LeakyReLU(0.2, inplace=True),
                                 AdaptiveAvgPool3d(output_size=(512, 1, 1))
-                                )
+                                )  # average pool makes reshaping easy, but not ideal architectural choice
 
-    def forward(self, inputs):
+    def forward(self,
+                inputs: Tuple[torch.tensor, torch.tensor] = None) -> torch.tensor:
+        """
+        Forward pass for discriminator module of CCGAN.
 
-        img, label = inputs
-        label_output = self.label_condition_disc(label.view(-1, 1))
-        label_output = label_output.view(-1, 1,  20, 20, 20)
-        concat = torch.cat((img, label_output), dim=2)
+        :param inputs: tuple containing the target property values and voxel grids
+        :return: probability of input being fake or real
+        """
+        img, target = inputs
+        target_output = self.label_condition_disc(target.view(-1, 1))
+        target_output = target_output.view(-1, 1, 20, 20, 20)
+        concat = torch.cat((img, target_output), dim=2)
         output = self.model(concat)
         reshape = output.view(img.size(0), output.size(2))
-        linear = self.fc2(reshape)
+        linear = self.fc(reshape)
 
         return self.sig(linear)

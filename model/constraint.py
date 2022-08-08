@@ -3,12 +3,10 @@ from torch.nn import Module, Linear, LeakyReLU, ReLU, Conv3d, BatchNorm3d, Seque
 
 
 class Constraint(Module):
-    def __init__(self,
-                 label_dim: int = 1):
+    def __init__(self) -> None:
         super(Constraint, self).__init__()
 
-        self.label_condition_disc = Linear(label_dim, 20 * 20 * 20)
-        self.fc2 = Linear(512, 1)
+        self.fc = Linear(512, 1)
         self.sig = Sigmoid()
         self.model = Sequential(Conv3d(in_channels=1, out_channels=4, kernel_size=(2, 2, 2), stride=1, bias=False),
                                 LeakyReLU(0.2, inplace=True),
@@ -23,13 +21,18 @@ class Constraint(Module):
                                 AdaptiveAvgPool3d(output_size=(512, 1, 1))
                                 )
 
-    def forward(self, inputs):
+    def forward(self,
+                inputs: torch.tensor = None) -> torch.tensor:
+        """
+        Forward pass of constraint module.
 
-        img, label = inputs
-        label_output = self.label_condition_disc(label.view(-1, 1))
-        label_output = label_output.view(-1, 1, 20, 20, 20)
-        concat = torch.cat((img, label_output), dim=2)
-        output = self.model(concat)
+        :param inputs: generated voxel images from generator
+        :return: predictions for stability factor values
+        """
+
+        img = inputs
+        output = self.model(img)
         reshape = output.view(img.size(0), output.size(2))
-        linear = self.fc2(reshape)
+        linear = self.fc(reshape)
+
         return linear

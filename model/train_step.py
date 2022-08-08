@@ -7,93 +7,128 @@ from model.discriminator import Discriminator
 from model.constraint import Constraint
 from tqdm import tqdm
 
-dataset = CVD(pool=['Ba', 'Ti', 'O'],
-              property='band_gap',
-              stability='energy_above_hull',
-              sigma=0.3,
-              grid_size=20)
-dataloader = DataLoader(dataset, batch_size=32,
-                        shuffle=True, num_workers=0)
+"""
+Template for parameters dictionary to be fed into trainer:
 
-#device = "mps" if torch.backends.mps.is_available() else "cpu"
-device = "cpu"
+parameters = {
+    'data': {
+        'element_system': "**O3",
+        'property': 'band_gap',
+        'stability_factor': 'energy_above_hull',
+        'sigmaGaus': 0.3,
+        'voxel_grid_size': 20
+    },
+    'model': {
+        'batch_size': 64,
+        'device': "cpu",
+        'learning_rate': 0.001,
+        'noise_dimension': 64,
+        'epochs': 100
+    },
+    'loss': {
+        'weight_generator': 0.5,
+        'weight_constraint': 0.5
+    }
+}
 
-criterion_GAN = nn.BCELoss()
-criterion_con = nn.MSELoss()
+"""
 
-lr = 0.001
-nz = 64
 
-netG = Generator(latent_dim=nz,
-                 label_dim=1).to(device)
-netD = Discriminator(label_dim=1).to(device)
-netC = Constraint(label_dim=1).to(device)
+def trainer(parameters_dict):
+    dataset = CVD(pool=parameters_dict['data']['element_system'],
+                  target=parameters_dict['data']['property'],
+                  stability=parameters_dict['data']['stability_factor'],
+                  sigma=parameters_dict['data']['sigmaGaus'],
+                  grid_size=parameters_dict['data']['voxel_grid_size'])  # create pytorch dataset
 
-optDis = optim.Adam(netD.parameters(), lr=lr, betas=(0.001, 0.999))
-optGen = optim.Adam(netG.parameters(), lr=lr, betas=(0.001, 0.999))
-optCon = optim.Adam(netC.parameters(), lr=lr, betas=(0.001, 0.999))
+    dataloader = DataLoader(dataset, batch_size=parameters_dict['model']['batch_size'],
+                            shuffle=True, num_workers=0)  # create pytorch dataloader
 
-real_label = 1
-fake_label = 0
+    device = parameters_dict['model']['device']
 
-for epochs in range(1000):
+    criterion_GAN = nn.BCELoss()  # loss function for classification
+    criterion_con = nn.MSELoss()  # loss function for stability factor prediction
 
-    errG_epoch, errC_epoch, errD_epoch = 0, 0, 0
+    lr = parameters_dict['model']['learning_rate']
+    nz = parameters_dict['model']['noise_dimension']
 
-    for i, data in tqdm(enumerate(dataloader)):
+    # instantiate modules of network
+    netG = Generator(latent_dim=nz,
+                     label_dim=1).to(device)
+    netD = Discriminator(label_dim=1).to(device)
+    netC = Constraint().to(device)
 
-        structures= data['voxel'].to(device)
-        structures = structures[:, None, :, :, :]
+    # instantiate optimizers
+    optDis = optim.Adam(netD.parameters(), lr=lr, betas=(0.001, 0.999))
+    optGen = optim.Adam(netG.parameters(), lr=lr, betas=(0.001, 0.999))
+    optCon = optim.Adam(netC.parameters(), lr=lr, betas=(0.001, 0.999))
 
-        target = data['property'].to(device)
-        constraint = data['stability'].to(device)
-        constraint = constraint[:, None]
-        names = data['name']
+    # define real and fake label values
+    real_label = 1
+    fake_label = 0
 
-        # discriminator
-        netD.zero_grad()
-        batch_size = structures.size(0)
-        label = torch.full((batch_size, 1), real_label, dtype=torch.float32, device=device)
+    # obtain weights for weighted loss
+    Wg = parameters_dict['loss']['weight_generator']
+    Wc = parameters_dict['loss']['weight_constraint']
 
-        output = netD((structures, target))
-        errD_real = criterion_GAN(output, label)
-        errD_real.backward()
-        D_x = output.mean().item()
+    for epoch in range(parameters_dict['model']['epochs']):
 
-        noise = torch.randn(batch_size, nz, dtype = torch.float32, device = device)
-        fake = netG((noise, target))
-        label.fill_(fake_label)
-        output = netD((fake.detach(), target))
-        errD_fake = criterion_GAN(output, label)
-        errD_fake.backward()
-        D_G_z1 = output.mean().item()
+        errG_epoch, errC_epoch, errD_epoch = 0, 0, 0  # trackers for epoch-wise loss
 
-        errD = errD_fake + errD_real
-        optDis.step()
+        for i, data in tqdm(enumerate(dataloader)):
+            structures = data['voxel'].to(device)
+            structures = structures[:, None, :, :, :]  # add channel dimension
 
-        errD_epoch += errD
+            target = data['property'].to(device)
+            constraint = data['stability'].to(device)
+            constraint = constraint[:, None]
 
-        # constraint
-        netC.zero_grad()
-        output = netC((fake.detach(), target))
+            # discriminator
+            netD.zero_grad()
+            batch_size = structures.size(0)
 
-        errC = criterion_con(output, constraint)
-        errC.backward()
-        G_C = output.mean().item()
-        optCon.step()
+            # first lets predict with real structures
+            label = torch.full((batch_size, 1), real_label, dtype=torch.float32, device=device)
+            output = netD((structures, target))
+            errD_real = criterion_GAN(output, label)
+            errD_real.backward()
 
-        errC_epoch += errC
+            # then lets predict with generated structures
+            noise = torch.randn(batch_size, nz, dtype=torch.float32, device=device)
+            fake = netG((noise, target))
+            label.fill_(fake_label)
+            output = netD((fake.detach(), target))
+            errD_fake = criterion_GAN(output, label)
 
-        # generator
-        netG.zero_grad()
-        label.fill_(real_label)  # what is fake label, is real for generator
-        output = netD((fake.detach(), target))
-        errG = criterion_GAN(output, label)
-        errG.backward()
-        D_G_z2 = output.mean().item()
-        optGen.step()
+            errD = errD_fake + errD_real  # total discriminator loss
+            errD_fake.backward()
+            optDis.step()
 
-        errG_epoch += errG
+            errD_epoch += errD
 
-    print("\n")
-    print(errG_epoch / batch_size, errC_epoch / batch_size, errD_epoch / batch_size)
+            # constraint
+            netC.zero_grad()
+            output = netC(fake.detach())
+
+            errC = criterion_con(output, constraint)
+            errC.backward()
+            optCon.step()
+
+            errC_epoch += errC
+
+            # generator
+            netG.zero_grad()
+            label.fill_(real_label)  # what is fake label, is real from generator perspective
+            output = netD((fake.detach(), target))
+
+            errG = Wg * criterion_GAN(output, label) + Wc * errC  # weighted loss function
+            errG.backward()
+            optGen.step()
+
+            errG_epoch += errG
+
+            #  end of batch
+
+        print("\n")
+        print(f"Epoch: {epoch}, Generator Loss: {errG_epoch / batch_size}, Constraint Loss: {errC_epoch / batch_size}, "
+              f"Discriminator Loss: {errD_epoch / batch_size}")
