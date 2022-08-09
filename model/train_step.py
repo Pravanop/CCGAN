@@ -72,7 +72,7 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
     Wg = parameters_dict['loss']['weight_generator']
     Wc = parameters_dict['loss']['weight_constraint']
 
-    # initiliazing wandb logging
+    # initializing wandb logging
     wandb.init(project="CCGAN", entity="pravanop")
     wandb.config = {
         "learning_rate": lr,
@@ -83,7 +83,7 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
     for epoch in range(parameters_dict['model']['epochs']):
 
         errG_epoch, errC_epoch, errD_epoch = 0, 0, 0  # trackers for epoch-wise loss
-
+        batch_size = 0
         for i, data in tqdm(enumerate(dataloader)):
             structures = data['voxel'].to(device)
             structures = structures[:, None, :, :, :]  # add channel dimension
