@@ -48,8 +48,10 @@ class CrystalVoxelDataset(Dataset):
         stability = torch.tensor(self.dataset[idx][3], dtype=torch.float32)
         structure = self.dataset[idx][4]  # index values corresponding to structured array from dataset
 
-        voxel_np = self.crystalToVox.speciesToVoxel(structure, eden=self.eden)  # ideally should be a transform property
+        voxel_np, species_np = self.crystalToVox.speciesToVoxel(structure, eden=self.eden)  # ideally should be a
+        # transform property
         voxel = torch.tensor(voxel_np, dtype=torch.float32)
-        sample = {'voxel': voxel, 'stability': stability, 'property': target, 'name': name}
+        species = torch.tensor(species_np, dtype=torch.float32)
+        sample = {'voxel': voxel, 'stability': stability, 'property': target, 'name': name, 'species matrix': species}
 
         return sample

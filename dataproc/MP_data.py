@@ -39,7 +39,9 @@ class dataFromMp:
                                                        "formula_pretty",
                                                        "material_id"])  # formula and material_id needed for easy pre-processing
 
-                self.structs = mpr.materials.search(elements=self.pool,
+                self.docs = [dict(ele) for ele in self.docs]
+                mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
+                self.structs = mpr.materials.search(task_ids=mp_ids,
                                                     fields=["initial_structures",
                                                             "material_id"])  # need a seperate call for getting structures
 
@@ -51,11 +53,12 @@ class dataFromMp:
                                                        "formula_pretty",
                                                        "material_id"])
 
-                self.structs = mpr.materials.search(formula=self.pool,
+                self.docs = [dict(ele) for ele in self.docs]
+                mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
+                self.structs = mpr.materials.search(task_ids=mp_ids,
                                                     fields=["initial_structures",
                                                             "material_id"])
 
-        self.docs = [dict(ele) for ele in self.docs]
         self.structs = [dict(ele) for ele in self.structs]  # converting to dict for ease of coding up next steps
 
     @staticmethod
