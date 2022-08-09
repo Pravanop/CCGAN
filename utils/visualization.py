@@ -1,13 +1,21 @@
+from typing import Union
 import plotly.graph_objects as go
 import numpy as np
-from dataproc.dataloader import CrystalVoxelDataset as CVD
 
 
-def plotter_voxel(sample,
-                  type: str = 'voxel'):
+def plotter_voxel(sample: Union[dict, np.array] = None,
+                  type: str = 'density') -> None:
+    """
+    The main function to plot voxel grids as Plotly Interactive Plots
 
+    :param sample: Either a dictionary sample from
+    the Pytorch Dataset or a voxel grid numpy array
+    :param type: Specifying if the voxel to be printed should be a density or species matrix.
+    Takes in 'density' or 'species'.
+    :return: An interactive 3D plot will be opened on a local port.
+    """
     if isinstance(sample, dict):
-        if type == 'voxel':
+        if type == 'density':
             voxel = sample['voxel'].numpy()
 
         else:

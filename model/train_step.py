@@ -1,3 +1,4 @@
+from typing import Tuple
 from torch import nn, optim
 import torch
 from dataproc.dataloader import CrystalVoxelDataset as CVD
@@ -6,35 +7,35 @@ from model.generator import Generator
 from model.discriminator import Discriminator
 from model.constraint import Constraint
 from tqdm import tqdm
-
-"""
-Template for parameters dictionary to be fed into trainer:
-
-parameters = {
-    'data': {
-        'element_system': "**O3",
-        'property': 'band_gap',
-        'stability_factor': 'energy_above_hull',
-        'sigmaGaus': 0.3,
-        'voxel_grid_size': 20
-    },
-    'model': {
-        'batch_size': 64,
-        'device': "cpu",
-        'learning_rate': 0.001,
-        'noise_dimension': 64,
-        'epochs': 100
-    },
-    'loss': {
-        'weight_generator': 0.5,
-        'weight_constraint': 0.5
-    }
-}
-
-"""
+import wandb
 
 
-def trainer(parameters_dict):
+def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Constraint]:
+    """
+    The main training loop for the full model.
+    :param parameters_dict: A dictionary for holding all useful parameters. An example would be:
+                parameters = {
+                            'data': {
+                                'element_system': "**O3",
+                                'property': 'band_gap',
+                                'stability_factor': 'energy_above_hull',
+                                'sigmaGaus': 0.3,
+                                'voxel_grid_size': 20
+                            },
+                            'model': {
+                                'batch_size': 64,
+                                'device': "cpu",
+                                'learning_rate': 0.001,
+                                'noise_dimension': 64,
+                                'epochs': 100
+                            },
+                            'loss': {
+                                'weight_generator': 0.5,
+                                'weight_constraint': 0.5
+                            }
+                    }
+    :return: The trained generator, discriminator and constraint modules
+    """
     dataset = CVD(pool=parameters_dict['data']['element_system'],
                   target=parameters_dict['data']['property'],
                   stability=parameters_dict['data']['stability_factor'],
@@ -71,6 +72,14 @@ def trainer(parameters_dict):
     Wg = parameters_dict['loss']['weight_generator']
     Wc = parameters_dict['loss']['weight_constraint']
 
+    # initiliazing wandb logging
+    wandb.init(project="CCGAN", entity="pravanop")
+    wandb.config = {
+        "learning_rate": lr,
+        "epochs": parameters_dict['model']['epochs'],
+        "batch_size": parameters_dict['model']['batch_size']
+    }
+
     for epoch in range(parameters_dict['model']['epochs']):
 
         errG_epoch, errC_epoch, errD_epoch = 0, 0, 0  # trackers for epoch-wise loss
@@ -105,6 +114,7 @@ def trainer(parameters_dict):
             optDis.step()
 
             errD_epoch += errD
+            wandb.log({"Discriminator Loss": errD})
 
             # constraint
             netC.zero_grad()
@@ -115,6 +125,7 @@ def trainer(parameters_dict):
             optCon.step()
 
             errC_epoch += errC
+            wandb.log({"Constraint Loss": errC})
 
             # generator
             netG.zero_grad()
@@ -126,9 +137,12 @@ def trainer(parameters_dict):
             optGen.step()
 
             errG_epoch += errG
+            wandb.log({"Generator Loss": errG})
 
             #  end of batch
 
         print("\n")
         print(f"Epoch: {epoch}, Generator Loss: {errG_epoch / batch_size}, Constraint Loss: {errC_epoch / batch_size}, "
               f"Discriminator Loss: {errD_epoch / batch_size}")
+
+    return netG, netD, netC
