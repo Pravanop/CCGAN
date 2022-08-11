@@ -51,3 +51,17 @@ def plotter_voxel(sample: Union[dict, np.array] = None,
         ))
         fig.update_layout(title_text='Reconstructed gaussian filter')
         fig.show()
+
+
+def plotter_species(species):
+    dimension = species.shape[0]
+    X, Y, Z = np.mgrid[0:dimension:20j, 0:dimension:20j, 0:dimension:20j]
+    fig = go.Figure(data=go.Volume(
+            x=X.flatten(),
+            y=Y.flatten(),
+            z=Z.flatten(),
+            value=species.flatten(),
+            opacity=0.1,  # needs to be small to see through all surfaces
+            surface_count=40,  # needs to be a large number for good volume rendering
+        ))
+    fig.show()

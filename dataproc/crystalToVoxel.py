@@ -33,137 +33,79 @@ class cellToVoxel:
         cg = np.mean(pos, 0)
         basis = translate - cg
         new_pos = pos + basis
-
         return new_pos
 
-    def speciesToVoxel(self,
-                       structure: pymatgen.core.Structure = None,
-                       eden: bool = None) -> Tuple[np.array, np.array]:
-        """
-        The primary function to create the electron density voxel grid or simple nuclear potential voxel grid.
-
-        :param structure: PyMatGen Structure module
-        :param eden: boolean for 'e'lectronic 'den'sity or nuclear potential model
-        :return: 3-D cubic voxel grid of specified dimension and type
-        """
+    def speciesToVoxel(self, structure, eden, image_type='Unified'):
 
         new_pos = self.basisTranslate(structure.cart_coords, self.dimension)
-        voxel_all = np.zeros((self.dimension, self.dimension, self.dimension))
-        species_all = np.zeros((self.dimension, self.dimension, self.dimension))
 
-        for id_atom, atom in enumerate(structure.species):  # iterating over atoms
-            voxel = np.zeros((self.dimension, self.dimension, self.dimension))
-            species = np.zeros((self.dimension, self.dimension, self.dimension))
-            for idx, x in enumerate(voxel):
-                for idy, y in enumerate(x):
-                    for idz, z in enumerate(y):
-                        atm_no = atom.Z
-
-                        r = (idx - new_pos[id_atom][0]) ** 2 + (idy - new_pos[id_atom][1]) ** 2 + (
-                                idz - new_pos[id_atom][2]) ** 2  # square of euclidean distance between each voxel
-                        # and the atom
-                        if r ** 0.5 < 0.5:  # needs altering
-                            if species[idx][idy][idz] > 0.0:
-                                if np.random.rand() > 0.5:
-                                    species[idx][idy][idz] = atm_no
-                            else:
-                                species[idx][idy][idz] = atm_no
-
-                        den = 2 * self.sigma ** 2  # denominator inside the exp.
-                        if eden:  # electron density function
-                            voxel[idx][idy][idz] = 1.0 / ((2.0 * np.pi) ** 1.5) * atm_no * (
-                                    1.0 / self.sigma ** 3) * np.exp(
-                                -r / den)  # need to understand this better
-                        else:
-                            voxel[idx][idy][idz] = atm_no * np.exp(
-                                -r / den)  # simple nuclear potential gaussian function
-            voxel_all += voxel
-            species_all += species
-        return voxel_all, species_all
-
-    def speciesToVoxel2(self,
-                        structure: pymatgen.core.Structure = None,
-                        eden: bool = None,
-                        image_type: str = 'Unified') -> Union[Tuple[np.array, np.array], Tuple[list, list]]:
-        """
-        The primary function to create the electron density voxel grid or simple nuclear potential voxel grid.
-
-        :param image_type: Type of density matrix shape
-        :param structure: PyMatGen Structure module
-        :param eden: boolean for 'e'lectronic 'den'sity or nuclear potential model
-        :return: 3-D cubic voxel grid of specified dimension and type
-        """
-
-        new_pos = self.basisTranslate(structure.cart_coords, self.dimension)
         atm_no_list = [atom.Z for atom in structure.species]
-        species = np.unique(atm_no_list)
-        n_species = species.shape[0]
+        species = np.unique(atm_no_list)  # list of unique atm no
+        n_species = species.shape[0]  # number of unique atm
 
-        if 'Unified' == image_type:
+        new_pos_dict = {}
+
+        for idx, atom in enumerate(atm_no_list):
+            if atom not in new_pos_dict.keys():
+                new_pos_dict[atom] = [new_pos[idx]]
+            else:
+                new_pos_dict[atom].append(new_pos[idx])
+
+        density_matrix, species_matrix = self.iterator(new_pos_dict, eden)
+
+        if image_type == 'Unified':
             image = np.zeros((self.dimension, self.dimension, self.dimension))
-            species_mat = np.zeros((self.dimension, self.dimension, self.dimension))
-
-            image, species_mat = self.iterator(image, species_mat, atm_no_list, species, new_pos, eden)
-
-            image_unified = np.zeros((self.dimension, self.dimension, self.dimension))
-            species_unified = np.zeros((self.dimension, self.dimension, self.dimension))
-
-            for i in range(n_species):
-                image_unified += image[i]
-                species_unified += species_mat[i]
-
-            return image_unified, species_unified
-
-        elif image_type == 'Separate':
-            image = [np.zeros(self.dimension, self.dimension, self.dimension) for __ in range(n_species)]
-            species_mat = [np.zeros(self.dimension, self.dimension, self.dimension) for __ in range(n_species)]
-
-            image, species_mat = self.iterator(image, species_mat, atm_no_list, species, new_pos, eden)
-
-            return image, species_mat
+            species = np.zeros((self.dimension, self.dimension, self.dimension))
+            for keys, values in density_matrix.items():
+                image += values
+            for keys, values in species_matrix.items():
+                species += values
 
         elif image_type == 'Channels':
-            image = [np.zeros(self.dimension, self.dimension, self.dimension) for __ in range(n_species)]
-            species_mat = [np.zeros(self.dimension, self.dimension, self.dimension) for __ in range(n_species)]
+            image = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
+            species = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
+            i = 0
+            for keys, values in density_matrix.items():
+                image[i, :, :, :] = values
+                i += 1
+            i = 0
+            for keys, values in species_matrix.items():
+                species[i, :, :, :] = values
+                i += 1
 
-            image = self.iterator(image, species_mat, atm_no_list, species, new_pos, eden)
-            image_channel = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
-            species_mat_channel = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
-            for i in range(n_species):
-                image_channel[i, :, :, :] = image[i]
-                species_mat_channel[i, :, :, :] = species_mat[i]
+        return image, species
 
-            return image_channel, species_mat_channel
+    def iterator(self, new_pos_dict, eden):
 
-    def iterator(self, image, species_mat, atm_no_list, species, new_pos, eden):
+        density_matrix = {}
+        species_matrix = {}
+        for key, value in new_pos_dict.items():
 
-        dimension = image[0].shape[-1]
+            density_species = np.zeros((self.dimension, self.dimension, self.dimension))
+            species_species = np.zeros((self.dimension, self.dimension, self.dimension))
+            for pos in value:
+                temp_density = np.zeros((self.dimension, self.dimension, self.dimension))
+                temp_species = np.zeros((self.dimension, self.dimension, self.dimension))
+                for idx, x in enumerate(temp_density):
+                    for idy, y in enumerate(x):
+                        for idz, z in enumerate(y):
 
-        for idx in range(dimension):
-            for idy in range(dimension):
-                for idz in range(dimension):
+                            r = (idx - pos[0]) ** 2 + (idy - pos[1]) ** 2 + (
+                                    idz - pos[2]) ** 2  # square of euclidean distance between each voxel
 
-                    for id_atom, atom in atm_no_list:
-                        channel_no = np.where(species == atom)
+                            temp_species[int(round(pos[0]))][int(round(pos[1]))][int(round(pos[2]))] = key
 
-                        r = ((idx - new_pos[id_atom][0]) ** 2 + (idy - new_pos[id_atom][1]) ** 2 + (
-                                idz - new_pos[id_atom][2]) ** 2) ** 0.5
-
-                        # for density matrix
-                        if eden:
-                            image[channel_no][idx][idy][idz] = 1.0 / ((2.0 * np.pi) ** 1.5) * atom * (
-                                    1.0 / self.sigma ** 3) * np.exp(
-                                -r ** 2 / (2 * (self.sigma ** 2)))
-                        else:
-                            image[channel_no][idx][idy][idz] = atom * np.exp(
-                                -r ** 2 / (2 * (self.sigma ** 2)))
-
-                        # for species matrix
-                        if r < 0.5:
-                            if species_mat[channel_no][idx][idy][idz] > 0.0:
-                                if np.random.rand() > 0.5:
-                                    species_mat[channel_no][idx][idy][idz] = atom
+                            den = 2 * self.sigma ** 2  # denominator inside the exp.
+                            if eden:  # electron density function
+                                temp_density[idx][idy][idz] = 1.0 / ((2.0 * np.pi) ** 1.5) * key * (
+                                        1.0 / self.sigma ** 3) * np.exp(
+                                    -r / den)  # need to understand this better
                             else:
-                                species_mat[channel_no][idx][idy][idz] = atom
+                                temp_density[idx][idy][idz] = key * np.exp(
+                                    -r / den)
+                density_species += temp_density
+                species_species += temp_species
+            density_matrix[key] = density_species
+            species_matrix[key] = species_species
 
-        return image, species_mat
+        return density_matrix, species_matrix
