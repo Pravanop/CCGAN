@@ -121,9 +121,9 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
             output = netC(fake.detach())
 
             errC = criterion_con(output, constraint)
+            errC_val = errC.clone().detach()
             errC.backward()
             optCon.step()
-
             errC_epoch += errC
             wandb.log({"Constraint Loss": errC})
 
@@ -132,9 +132,10 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
             label.fill_(real_label)  # what is fake label, is real from generator perspective
             output = netD((fake.detach(), target))
 
-            errG = Wg * criterion_GAN(output, label) + Wc * errC  # weighted loss function
+            errG = Wg * criterion_GAN(output, label) + Wc * errC_val  # weighted loss function
             errG.backward()
             optGen.step()
+
 
             errG_epoch += errG
             wandb.log({"Generator Loss": errG})
@@ -146,3 +147,26 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
               f"Discriminator Loss: {errD_epoch / batch_size}")
 
     return netG, netD, netC
+
+parameters = {
+                            'data': {
+                                'element_system': "*PbO3",
+                                'property': 'band_gap',
+                                'stability_factor': 'energy_above_hull',
+                                'sigmaGaus': 0.3,
+                                'voxel_grid_size': 30
+                            },
+                            'model': {
+                                'batch_size': 64,
+                                'device': "cpu",
+                                'learning_rate': 0.001,
+                                'noise_dimension': 64,
+                                'epochs': 100
+                            },
+                            'loss': {
+                                'weight_generator': 0.5,
+                                'weight_constraint': 0.5
+                            }
+                    }
+
+trainer(parameters_dict=parameters)

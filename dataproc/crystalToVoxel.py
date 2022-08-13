@@ -62,8 +62,8 @@ class cellToVoxel:
                 species += values
 
         elif image_type == 'Channels':
-            image = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
-            species = np.zeros(n_species, self.dimension, self.dimension, self.dimension)
+            image = np.zeros((n_species, self.dimension, self.dimension, self.dimension))
+            species = np.zeros((n_species, self.dimension, self.dimension, self.dimension))
             i = 0
             for keys, values in density_matrix.items():
                 image[i, :, :, :] = values

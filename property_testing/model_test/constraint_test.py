@@ -1,12 +1,10 @@
 from model.constraint import Constraint
 import torch
 
-dis = Constraint(label_dim=1)
+dis = Constraint(grid_size=30)
 
-image = torch.rand(1, 1, 20, 20, 20)
-property = torch.rand(1)
-inputs = (image, property)
+image = torch.rand(1, 1, 30, 30, 30)
 
-outputs = dis(inputs)
+outputs = dis(image)
 
 print(outputs)

@@ -6,15 +6,16 @@ from torch.nn import Module, Linear, LeakyReLU, Conv3d, BatchNorm3d, Sequential,
 
 class Discriminator(Module):
     def __init__(self,
-                 label_dim: int = 1) -> None:
+                 label_dim: int = 1,
+                 grid_size: int = 30) -> None:
         """
         The discriminator Module hardcoded to take a one channel 20 dimensional voxel grid.
 
         :param label_dim: The dimension of the property. Should mostly be 1
         """
         super(Discriminator, self).__init__()
-
-        self.label_condition_disc = Linear(label_dim, 20 * 20 * 20)
+        self.dim = grid_size
+        self.label_condition_disc = Linear(label_dim, grid_size*grid_size*grid_size)
         self.fc = Linear(512, 1)
         self.sig = Sigmoid()
         self.model = Sequential(Conv3d(in_channels=1, out_channels=4, kernel_size=(2, 2, 2), stride=1, bias=False),
@@ -40,7 +41,7 @@ class Discriminator(Module):
         """
         img, target = inputs
         target_output = self.label_condition_disc(target.view(-1, 1))
-        target_output = target_output.view(-1, 1, 20, 20, 20)
+        target_output = target_output.view(-1, 1, self.dim, self.dim, self.dim)
         concat = torch.cat((img, target_output), dim=2)
         output = self.model(concat)
         reshape = output.view(img.size(0), output.size(2))

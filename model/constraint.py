@@ -3,9 +3,11 @@ from torch.nn import Module, Linear, LeakyReLU, ReLU, Conv3d, BatchNorm3d, Seque
 
 
 class Constraint(Module):
-    def __init__(self) -> None:
+    def __init__(self,
+                 grid_size: int = 30) -> None:
         super(Constraint, self).__init__()
 
+        self.dim = grid_size
         self.fc = Linear(512, 1)
         self.sig = Sigmoid()
         self.model = Sequential(Conv3d(in_channels=1, out_channels=4, kernel_size=(2, 2, 2), stride=1, bias=False),
