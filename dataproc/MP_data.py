@@ -70,9 +70,9 @@ class dataFromMp:
 
         if save:
             with open(f'{data_path}data_{self.pool}_properties.pickle', 'wb') as handle:
-                pickle.dump(self.docs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(self.docs, handle, protocol=4)
             with open(f'{data_path}data_{self.pool}_structures.pickle', 'wb') as handle:
-                pickle.dump(self.structs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(self.structs, handle, protocol=4)
 
 
     @staticmethod
