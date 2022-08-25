@@ -150,7 +150,7 @@ def trainer(parameters_dict: dict = None) -> Tuple[Generator, Discriminator, Con
 
 parameters = {
                             'data': {
-                                'element_system': "*PbO3",
+                                'element_system': "**O3",
                                 'property': 'band_gap',
                                 'stability_factor': 'energy_above_hull',
                                 'sigmaGaus': 0.3,

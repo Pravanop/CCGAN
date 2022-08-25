@@ -5,7 +5,8 @@ from utils.visualization import plotter_voxel
 dataset = dataFromMp(pool='**O3',
                      stability='energy_above_hull',
                      target='band_gap',
-                     ).crystalInfo
+                     save=True,
+                     load=False).crystalInfo
 
 structure = dataset[0][-1]
 print(dataset[0][0])

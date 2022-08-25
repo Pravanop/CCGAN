@@ -3,7 +3,7 @@ import pymatgen as mp
 from mp_api import MPRester
 import numpy as np
 import warnings
-
+import pickle
 warnings.filterwarnings('ignore')
 
 
@@ -12,7 +12,10 @@ class dataFromMp:
     def __init__(self,
                  pool: Union[List[str], str] = None,
                  target: str = None,
-                 stability: str = None) -> None:
+                 stability: str = None,
+                 save: bool = False,
+                 load: bool = False,
+                 data_path: str = '/Users/pravanomprakash/Documents/Projects/Teaching Machines to Learn/CCGAN/data/') -> None:
 
         """
         Script to use Materials Project APIs to extract material information as ready-made dataset.
@@ -27,39 +30,50 @@ class dataFromMp:
 
         self.api_key = 'u1TjwfwfTnpF8IolXF9PBY9RT9YauL84'  # pravan's api key, change if needed
         self.pool = pool
-
         self.property = target
         self.stability = stability
+        if load:
+            with open(f'{data_path}data_{self.pool}_properties.pickle', 'rb') as handle:
+                self.docs = pickle.load(handle)
+            with open(f'{data_path}data_{self.pool}_structures.pickle', 'rb') as handle:
+                self.structs = pickle.load(handle)
+        else:
+            with MPRester(self.api_key) as mpr:
+                if isinstance(pool, list):
+                    self.docs = mpr.summary.search(elements=self.pool,
+                                                   fields=[self.property,
+                                                           self.stability,
+                                                           "formula_pretty",
+                                                           "material_id"])  # formula and material_id needed for easy pre-processing
 
-        with MPRester(self.api_key) as mpr:
-            if isinstance(pool, list):
-                self.docs = mpr.summary.search(elements=self.pool,
-                                               fields=[self.property,
-                                                       self.stability,
-                                                       "formula_pretty",
-                                                       "material_id"])  # formula and material_id needed for easy pre-processing
+                    self.docs = [dict(ele) for ele in self.docs]
+                    mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
+                    self.structs = mpr.materials.search(task_ids=mp_ids,
+                                                        fields=["initial_structures",
+                                                                "material_id"])  # need a seperate call for getting structures
 
-                self.docs = [dict(ele) for ele in self.docs]
-                mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
-                self.structs = mpr.materials.search(task_ids=mp_ids,
-                                                    fields=["initial_structures",
-                                                            "material_id"])  # need a seperate call for getting structures
+                else:
 
-            else:
+                    self.docs = mpr.summary.search(formula=self.pool,
+                                                   fields=[self.property,
+                                                           self.stability,
+                                                           "formula_pretty",
+                                                           "material_id"])
 
-                self.docs = mpr.summary.search(formula=self.pool,
-                                               fields=[self.property,
-                                                       self.stability,
-                                                       "formula_pretty",
-                                                       "material_id"])
+                    self.docs = [dict(ele) for ele in self.docs]
+                    mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
+                    self.structs = mpr.materials.search(task_ids=mp_ids,
+                                                        fields=["initial_structures",
+                                                                "material_id"])
 
-                self.docs = [dict(ele) for ele in self.docs]
-                mp_ids = [self.docs[i]['material_id'] for i in range(len(self.docs))]
-                self.structs = mpr.materials.search(task_ids=mp_ids,
-                                                    fields=["initial_structures",
-                                                            "material_id"])
+            self.structs = [dict(ele) for ele in self.structs]  # converting to dict for ease of coding up next steps
 
-        self.structs = [dict(ele) for ele in self.structs]  # converting to dict for ease of coding up next steps
+        if save:
+            with open(f'{data_path}data_{self.pool}_properties.pickle', 'wb') as handle:
+                pickle.dump(self.docs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(f'{data_path}data_{self.pool}_structures.pickle', 'wb') as handle:
+                pickle.dump(self.structs, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
     @staticmethod
     def search(arr: np.array = None,

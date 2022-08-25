@@ -28,7 +28,9 @@ class CrystalVoxelDataset(Dataset):
         """
         self.dataset = dataFromMp(pool=pool,
                                   target=target,
-                                  stability=stability).crystalInfo  # extract data from the materials project
+                                  stability=stability,
+                                  load=True,
+                                  save=False).crystalInfo  # extract data from the materials project
         self.crystalToVox = cellToVoxel(sigma=sigma,
                                         dimension=grid_size)  # convert the structures to voxel grid
         self.eden = eden
